@@ -25,7 +25,57 @@ function readFile(filePath) {
       console.error(`Got an error trying to read the file: ${error.message}`);
     }
 }
+function proxy(proxyURL,req,res){
+  if(req.path.split("/")[req.path.split("/").length-1].includes(".")){
+    mimeType = mt.lookup(req.path)
+  }
+  if(mimeType!==""){
+      res.type(mimeType);
+      console.log(mimeType);
+  }
+  if(mimeType!==""&&!res.getHeader("Content-Type").includes("charset=utf-")){
+      fetch(proxyURL+req.path).then(res => res.blob()).then((blob)=>{
+          // console.log(text);
+          // console.log(req.path);   
+          console.log("blob");
+          let arrayBuffer;
+          blob.arrayBuffer().then((ab)=>{
+              arrayBuffer = ab;
+          
+              let buffer = Buffer.from(arrayBuffer);
+              let b64 = buffer.toString('base64');
+              // console.log("writing");
+              fs.writeFileSync("temp/"+req.path.split("/")[req.path.split("/").length-1],b64,"base64",(err)=>{
+                  console.error(err);
+              });
+              
+              console.log(res.getHeader("Content-Type"));
+              res.sendFile(path.join(__dirname,"/temp/"+req.path.split("/")[req.path.split("/").length-1]));
+              // console.log("unlinking");
+              // fs.unlinkSync(path.join(__dirname,"/temp/"+req.path.split("/")[req.path.split("/").length-1]));
+              console.log("------------------------------------")
 
+          })
+      })
+  }else{
+      fetch(proxyURL+req.path).then(res => res.text()).then((text)=>{
+          // console.log(text);
+          // console.log(req.path);
+
+          
+          console.log(res.getHeader("Content-Type"));
+          let modText = text;
+          let matches = String(modText).match(urlRegex);
+          for(const string of matches){
+            modText.replace(string,"/nonrelative/"+string.replace(/(https?:\/\/|ftp:\/\/)/gmi,"").replace(/(?<=\.[a-zA-Z]*)\//gmi,"/s/").replace(".","/"));
+          }
+
+          res.send(modText);
+          console.log("------------------------------------")
+          
+  })
+  }
+}
 const app = express()
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -52,77 +102,12 @@ app.get("/*", (req,res)=>{
     }else{
       proxyURL = "https://example.com"
     }
-    if(req.path.split("/")[req.path.split("/").length-1].includes(".")){
-      mimeType = mt.lookup(req.path)
-    }
-    if(mimeType!==""){
-        res.type(mimeType);
-        console.log(mimeType);
-    }
-    if(mimeType!==""&&res.getHeader("Content-Type").includes("charset=utf-")){
-        fetch(proxyURL+req.path).then(res => res.text()).then((text)=>{
-            // console.log(text);
-            // console.log(req.path);
-
-            
-            console.log(res.getHeader("Content-Type"));
-            let modText = text;
-            let matches = String(modText).match(urlRegex);
-            for(const string of matches){
-              modText.replace(string,"/nonrelative/"+string.replace(/(https?:\/\/|ftp:\/\/)/gmi,"").replace(/(?<=\.[a-zA-Z]*)\//gmi,"/s/").replace(".","/"));
-            }
-
-            res.send(modText);
-            console.log("------------------------------------")
-
-            
-    })}else if(mimeType!==""&&!res.getHeader("Content-Type").includes("charset=utf-")){
-        fetch(proxyURL+req.path).then(res => res.blob()).then((blob)=>{
-            // console.log(text);
-            // console.log(req.path);   
-            console.log("blob");
-            let arrayBuffer;
-            blob.arrayBuffer().then((ab)=>{
-                arrayBuffer = ab;
-            
-                let buffer = Buffer.from(arrayBuffer);
-                let b64 = buffer.toString('base64');
-                // console.log("writing");
-                fs.writeFileSync("temp/"+req.path.split("/")[req.path.split("/").length-1],b64,"base64",(err)=>{
-                    console.error(err);
-                });
-                
-                console.log(res.getHeader("Content-Type"));
-                res.sendFile(path.join(__dirname,"/temp/"+req.path.split("/")[req.path.split("/").length-1]));
-                // console.log("unlinking");
-                // fs.unlinkSync(path.join(__dirname,"/temp/"+req.path.split("/")[req.path.split("/").length-1]));
-                console.log("------------------------------------")
-
-            })
-        })
-    }else{
-        fetch(proxyURL+req.path).then(res => res.text()).then((text)=>{
-            // console.log(text);
-            // console.log(req.path);
-
-            
-            console.log(res.getHeader("Content-Type"));
-            let modText = text;
-            let matches = String(modText).match(urlRegex);
-            for(const string of matches){
-              modText.replace(string,"/nonrelative/"+string.replace(/(https?:\/\/|ftp:\/\/)/gmi,"").replace(/(?<=\.[a-zA-Z]*)\//gmi,"/s/").replace(".","/"));
-            }
-
-            res.send(modText);
-            console.log("------------------------------------")
-            
-    })
-    }
+    proxy(proxyURL,req,res);
     
 })
 app.get("/nonrelative/*",(req,res)=>{
   let proxyURL = req.path.replace(/\/(?=.*\/s\/)/gmi,".").replace("/s/","/");
-
+  proxy(proxyURL,req,res);
 })
 setInterval(async () => {
     
