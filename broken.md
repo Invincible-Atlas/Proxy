@@ -1,0 +1,3 @@
+# Broken links:
+/public/*
+/proxy/*
