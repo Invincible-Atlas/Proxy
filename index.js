@@ -1,12 +1,14 @@
-const express = require('express')
+console.log("Hello World");
+const express = require('express');
 var path = require('path');
 const fs = require('fs');
 const bodyParser = require('body-parser');
 const mt = require("mime-types");
 const cookieParser = require("cookie-parser");
+// const { console } = require('inspector');
 let log = "";
-let urlRegex = /^(?:(?:(?:https?|ftp):)?\/\/)(?:\S+(?::\S*)?@)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z0-9\u00a1-\uffff][a-z0-9\u00a1-\uffff_-]{0,62})?[a-z0-9\u00a1-\uffff]\.)+(?:[a-z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?(?:[/?#]\S*)?$/i;
-(()=>{const directory = "temp";
+let urlRegex = /(?:(?:(?:https?|ftp):)?\/\/)(?:\S+(?::\S*)?@)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z0-9\u00a1-\uffff][a-z0-9\u00a1-\uffff_-]{0,62})?[a-z0-9\u00a1-\uffff]\.)+(?:[a-z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?(?:[/?#][^\s\"]*)?/img;
+(()=>{const directory = "temp/slashstar";
 
     fs.readdir(directory, (err, files) => {
       if (err) throw err;
@@ -26,6 +28,7 @@ function readFile(filePath) {
     }
 }
 function proxy(proxyURL,req,res){
+  let mimeType = "";
   if(req.path.split("/")[req.path.split("/").length-1].includes(".")){
     mimeType = mt.lookup(req.path)
   }
@@ -59,17 +62,29 @@ function proxy(proxyURL,req,res){
       })
   }else{
       fetch(proxyURL+req.path).then(res => res.text()).then((text)=>{
-          // console.log(text);
+          console.log(text);
+          
           // console.log(req.path);
 
           
-          console.log(res.getHeader("Content-Type"));
+          console.log(`Content type: ${res.getHeader("Content-Type")}`);
           let modText = text;
           let matches = String(modText).match(urlRegex);
-          for(const string of matches){
-            modText.replace(string,"/nonrelative/"+string.replace(/(https?:\/\/|ftp:\/\/)/gmi,"").replace(/(?<=\.[a-zA-Z]*)\//gmi,"/s/").replace(".","/"));
-          }
+          console.log(`URL Regex Matches: ${matches}`);
+          // console.log(typeof matches)
+          if(matches!==null&&matches!==undefined){
+            for(let i = 0;i<matches.length;i++){
+              let string = matches[i];
+              let formattedString = "/nonrelative/"+string.replace(/(https?:\/\/|ftp:\/\/)/gmi,"").replace(/(?<=\.[a-zA-Z]*)\//gmi,"/s/").replace(".","/");
+              console.log(`Matches: ${modText.match(string)}`);
+              console.log(`Formatted Matches: ${formattedString}`);
+              console.log(modText.indexOf(string));
+              modText.replaceAll(string,formattedString);
 
+            }
+          }
+          console.log("ModText:")
+          console.log(modText);
           res.send(modText);
           console.log("------------------------------------")
           
@@ -93,8 +108,8 @@ app.get("/proxy",(req,res)=>{
 app.get("/*", (req,res)=>{
     
 
-    console.log(proxyURL+req.path);
-    let mimeType = "";
+    // console.log(proxyURL+req.path);
+    // let mimeType = "";
     console.log(req.cookies);
     let proxyURL;
     if(urlRegex.test(req.cookies.search)){
@@ -111,7 +126,7 @@ app.get("/nonrelative/*",(req,res)=>{
 })
 setInterval(async () => {
     
-        (()=>{const directory = "temp";
+        (()=>{const directory = "temp/slashstar";
 
             fs.readdir(directory, (err, files) => {
               if (err) throw err;
